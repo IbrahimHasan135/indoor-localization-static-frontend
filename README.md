@@ -2,9 +2,19 @@
 
 A static HTML, CSS, and JavaScript frontend for exploring an indoor localization monitor. There is no backend and no location algorithm in this project. The page subscribes to an MQTT topic over WebSocket, records incoming messages in the browser session, and visualizes coordinates when a payload includes `x` and `y` in meters.
 
+## Architecture
+
+The code follows a one-way **Controller → Service → Driver** dependency flow, composed in `app.js`:
+
+- **Controller** (`src/controllers/AppController.js`) coordinates UI events and service calls.
+- **Services** (`src/services/`) own MQTT connection rules, message history, and position parsing/trajectory state. A real localization algorithm can be integrated behind `LocalizationService` later.
+- **Drivers** (`src/drivers/`) adapt browser MQTT.js, local storage, and dashboard DOM operations. They contain no position algorithm.
+
+The controller never talks directly to a driver. `app.js` is the composition root: it creates the drivers, injects them into services, then injects the services into the controller.
+
 ## Run locally
 
-Open `index.html` in a browser, or serve this folder using any static file server. MQTT browser connectivity requires a broker with a WebSocket listener and appropriate browser CORS/origin access. Use `wss://` for a secure hosted page.
+Serve this folder using any static file server (ES modules do not run reliably when opened as a `file://` URL). For example, run `python -m http.server 8000` from the project directory, then open `http://localhost:8000`. MQTT browser connectivity requires a broker with a WebSocket listener and appropriate browser CORS/origin access. Use `wss://` for a secure hosted page.
 
 ## Connect a broker
 

@@ -41,6 +41,7 @@
   </div>
   <div class="modal-backdrop hidden" id="settingsModal"><section class="modal"><div class="modal-heading"><div><div class="panel-kicker">MQTT CONFIGURATION</div><h2>Connect a broker</h2><p>Enter your MQTT over WebSocket connection details.</p></div><button class="icon-button" id="closeSettings">×</button></div><form id="connectionForm"><label>Broker WebSocket URL<input name="url" placeholder="wss://broker.example.com:8084/mqtt" required /></label><div class="form-note">Browser connections require a WebSocket endpoint (ws:// or wss://), not a raw MQTT TCP port.</div><label>Topic to subscribe<input name="topic" placeholder="localization/position" required /></label><div class="form-two"><label>Username <span class="optional">OPTIONAL</span><input name="username" placeholder="Broker username" autocomplete="username" /></label><label>Password <span class="optional">OPTIONAL</span><input name="password" type="password" placeholder="Broker password" autocomplete="current-password" /></label></div><div class="payload-note"><b>Expected position payload</b><code>{ "x": 0.6, "y": -0.4 }</code><span>Coordinates in meters, with the map origin at the center.</span></div><div class="modal-actions"><button type="button" class="button button-quiet" id="cancelSettings">Cancel</button><button type="submit" class="button button-primary">Save & connect <span>↗</span></button></div></form></section></div>
   <div class="toast hidden" id="toast"></div>
-  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script><script src="app.js"></script>
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  <script type="module" src="app.js"></script>
 </body>
 </html>
