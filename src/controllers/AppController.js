@@ -1,10 +1,12 @@
 /** Coordinates UI events and services. It owns no MQTT or localization algorithms. */
 export class AppController {
-  constructor({ view, connectionService, localizationService, messageLogService }) {
+  constructor({ view, connectionService, localizationService, messageLogService, simulationService }) {
     this.view = view;
     this.connectionService = connectionService;
     this.localizationService = localizationService;
     this.messageLogService = messageLogService;
+    this.simulationService = simulationService;
+    this.positionSource = null;
     this.searchQuery = '';
 
     this.connectionService.setHandlers({
@@ -16,17 +18,20 @@ export class AppController {
 
     this.view.bindActions({
       onOpenSettings: () => this.view.showSettings(this.connectionService.getSavedConfig()),
+      onUsePublicBroker: () => this.view.showSettings(this.connectionService.getDefaultConfig()),
       onCloseSettings: () => this.view.hideSettings(),
       onConnect: (config) => this.connect(config),
       onConnectButton: () => this.toggleConnection(),
       onSearch: (query) => { this.searchQuery = query; this.renderLogs(); },
       onClearLogs: () => this.clearLogs(),
       onDownloadLogs: () => this.view.downloadJson(this.messageLogService.exportMessages()),
-      onResetMap: () => this.resetMap()
+      onResetMap: () => this.resetMap(),
+      onToggleSimulation: () => this.toggleSimulation()
     });
 
     this.view.showSavedTopic(this.connectionService.getSavedConfig()?.topic);
     this.renderLogs();
+    this.view.resetMap();
   }
 
   connect(config) {
@@ -53,8 +58,40 @@ export class AppController {
     const message = this.messageLogService.record(topic, payload);
     this.view.renderMessageReceived(message.receivedAt);
     this.renderLogs();
-    const update = this.localizationService.processPayload(payload);
-    if (update) this.view.renderPosition(update.position, update.points, update.displayPayload, message.receivedAt);
+  }
+
+  // A future cloud-result adapter calls this explicitly; raw MQTT never calls it.
+  onLocalizationResult(result, receivedAt = new Date().toISOString()) {
+    if (!result || !Number.isFinite(result.x) || !Number.isFinite(result.y)) return;
+    this.simulationService?.pause();
+    this.view.showSimulationState(false);
+    if (this.positionSource !== 'cloud') this.localizationService.reset();
+    this.positionSource = 'cloud';
+    this.renderResult(result, receivedAt, 'cloud');
+  }
+
+  renderResult(result, receivedAt, source) {
+    const update = this.localizationService.processResult(result);
+    if (update) this.view.renderPosition(update.position, update.points, update.displayPayload, receivedAt, source);
+  }
+
+  toggleSimulation() {
+    if (!this.simulationService) return;
+    if (this.simulationService.isRunning) {
+      this.simulationService.pause();
+      this.view.showSimulationState(false, true);
+      return;
+    }
+    if (this.positionSource !== 'simulation') {
+      this.localizationService.reset();
+      this.simulationService.reset();
+      this.positionSource = 'simulation';
+      this.renderResult(this.simulationService.position, new Date().toISOString(), 'simulation');
+    }
+    this.simulationService.run((position) => {
+      this.renderResult(position, new Date().toISOString(), 'simulation');
+    });
+    this.view.showSimulationState(true);
   }
 
   renderLogs() {
@@ -68,6 +105,9 @@ export class AppController {
   }
 
   resetMap() {
+    this.simulationService?.reset();
+    this.positionSource = null;
+    this.view.showSimulationState(false);
     this.localizationService.reset();
     this.view.resetMap();
     this.view.showToast('Map position and path reset.');

@@ -1,14 +1,22 @@
+// Public test broker: anonymous access; this topic namespace is not private.
+const DEFAULT_MQTT_CONFIG = Object.freeze({
+  url: 'wss://broker.hivemq.com:8884/mqtt',
+  topic: 'atlas/indoor-lab/ibrohim-7c91e2/telemetry/node-01',
+  username: ''
+});
+
 /** Application rules and connection state for MQTT. Depends on injected drivers. */
 export class MqttConnectionService {
   constructor(mqttDriver, configStorageDriver) {
     this.mqttDriver = mqttDriver;
     this.configStorageDriver = configStorageDriver;
-    this.config = configStorageDriver.load();
+    this.config = configStorageDriver.load() || this.getDefaultConfig();
     this.handlers = {};
   }
 
   setHandlers(handlers) { this.handlers = handlers; }
   getSavedConfig() { return this.config; }
+  getDefaultConfig() { return { ...DEFAULT_MQTT_CONFIG }; }
   get isConnected() { return this.mqttDriver.isConnected; }
 
   connect(config) {

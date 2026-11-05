@@ -1,47 +1,59 @@
 # Atlas · Indoor Localization Showcase
 
-A static HTML, CSS, and JavaScript frontend for exploring an indoor localization monitor. There is no backend and no location algorithm in this project. The page subscribes to an MQTT topic over WebSocket, records incoming messages in the browser session, and visualizes coordinates when a payload includes `x` and `y` in meters.
+A static HTML, CSS, and JavaScript dashboard for raw MQTT telemetry and cloud-computed indoor positioning. Devices publish lightweight measurements; a separate cloud service performs localization. This repository contains no backend or localization algorithm.
 
 ## Architecture
 
-The code follows a one-way **Controller → Service → Driver** dependency flow, composed in `app.js`:
+Dependencies are composed in `app.js`:
 
-- **Controller** (`src/controllers/AppController.js`) coordinates UI events and service calls.
-- **Services** (`src/services/`) own MQTT connection rules, message history, and position parsing/trajectory state. A real localization algorithm can be integrated behind `LocalizationService` later.
-- **Drivers** (`src/drivers/`) adapt browser MQTT.js, local storage, and dashboard DOM operations. They contain no position algorithm.
+- **Controller** (`src/controllers/AppController.js`) coordinates UI actions and services.
+- **Services** (`src/services/`) manage connections, raw message history, and validated cloud-result trajectory state.
+- **Drivers** (`src/drivers/`) adapt MQTT.js, browser storage, and dashboard DOM operations.
 
-The controller never talks directly to a driver. `app.js` is the composition root: it creates the drivers, injects them into services, then injects the services into the controller.
+Data flows are separate:
+
+```text
+Device measurements → MQTT broker → raw telemetry logs
+                             └→ cloud localization → result adapter → position map
+```
+
+The cloud service and result adapter are **not implemented**. All messages from the configured MQTT subscription go to logs only, even if they contain `x`, `y`, `position`, or `location` fields. Connecting the telemetry broker does not activate the map.
 
 ## Run locally
 
-Serve this folder using any static file server (ES modules do not run reliably when opened as a `file://` URL). For example, run `python -m http.server 8000` from the project directory, then open `http://localhost:8000`. MQTT browser connectivity requires a broker with a WebSocket listener and appropriate browser CORS/origin access. Use `wss://` for a secure hosted page.
+Run `python3 -m http.server 8000` from this directory and open `http://localhost:8000`. ES modules require HTTP instead of `file://`. There is no build or package installation step.
 
-## Connect a broker
+## Connect a telemetry broker
 
-Choose **Connection settings** and enter the WebSocket URL, topic, and optional username/password. The URL should look like `wss://broker.example.com:8084/mqtt`. Raw MQTT TCP endpoints such as port 1883 cannot be opened directly by browser JavaScript. Broker credentials are used for the active connection and are not saved; the URL, topic, and username are saved in local storage.
+Open **Connection settings** and click **Save & connect**. First use defaults to [HiveMQ's public test broker](https://www.mqtt-dashboard.com/):
 
-## Position message shape
+- Browser WebSocket URL: `wss://broker.hivemq.com:8884/mqtt` (the `/mqtt` path is required).
+- Device host: `broker.hivemq.com`; MQTT TCP port `1883`, or TLS port `8883`.
+- Telemetry topic: `atlas/indoor-lab/ibrohim-7c91e2/telemetry/node-01`.
+- Username and password: **leave both empty**; public access is anonymous.
 
-The visualization accepts JSON in any of these shapes:
+Publish device measurements to exactly the same topic. For another node, use a distinct final segment such as `node-02`, and change the dashboard subscription to match (or use `atlas/indoor-lab/ibrohim-7c91e2/telemetry/+` to monitor all nodes).
 
-```json
-{"x": 0.6, "y": -0.4}
-```
+Saved custom settings take precedence. **Use HiveMQ public** restores the public defaults in the form; **Save & connect** applies them. The topic prefix reduces accidental collisions but provides no access control: anyone can read or publish to it. Use test data only; this public broker provides no uptime guarantee.
 
-```json
-{"position": {"x": 0.6, "y": -0.4}}
-```
+Payloads are logged as received; no device JSON schema is imposed. The URL, topic, and username are saved in local storage. Passwords are used for the active connection only.
 
-```json
-{"location": {"x": 0.6, "y": -0.4}}
-```
+## Cloud localization integration
 
-The 4 × 4 m map is centered at `(0, 0)`, so both coordinates range from `-2` to `2` meters. Positive Y points toward the top of the map. Incoming JSON is still shown in the message stream even when it does not contain coordinates. In that case, it will not move the marker.
+The map starts empty, with coordinate values shown as `—`. A future cloud-result adapter should call `AppController.onLocalizationResult({ x, y }, receivedAt)` with finite numeric coordinates in meters. This is an internal integration hook, not an HTTP endpoint or an active subscription. Wire the adapter through `app.js` once the cloud transport and result schema are defined. Do not route raw device messages into it.
 
-## Logs
+`LocalizationService` validates already computed coordinates and holds the path; it performs no localization computation. The 4 × 4 m map is centered at `(0, 0)` with both axes ranging from `−2` to `2` meters. Positive Y points upward. Display coordinates are clamped to map bounds.
 
-Incoming topic, timestamp, and payload are held in page memory. Use **Export JSON** to download them or **Clear logs** to remove them. Refreshing the page clears the message stream and trajectory.
+## Movement preview
 
-## Dependencies
+Click **Run demo** above the map to preview a simulated node moving at approximately 0.13 m/s. It advances continuously toward random interior targets and turns gradually. **Pause** freezes the preview; **Resume** continues from the same point. **Reset map** stops it and clears the trajectory. The display retains up to 1,200 recent points.
 
-MQTT.js is loaded from the unpkg CDN. A network connection is needed for broker messaging and for the MQTT client library.
+Demo positions are labeled as simulated and never enter MQTT logs. Starting a demo clears the previous map path. A valid cloud result stops the preview and starts a separate cloud trajectory. This preview runs locally without a broker or cloud service.
+
+## Logs and validation
+
+Telemetry history stays in page memory. Filter, export with **Export JSON**, or use **Clear logs**. Clearing logs does not reset positioning; **Reset map** clears the position and trajectory. Refresh clears both.
+
+Run `node --test` for regression checks of telemetry/result separation and cloud coordinate validation. Run `git diff --check` before review. Check desktop and mobile layouts in a browser after UI changes. Mock-based tests do not verify a live broker or cloud service.
+
+MQTT.js and Google Fonts load from external CDNs. Network access is needed for those assets and live broker connectivity.

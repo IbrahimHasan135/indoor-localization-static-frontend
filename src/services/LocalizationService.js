@@ -1,4 +1,4 @@
-/** Position payload interpretation and trajectory state; the localization algorithm plugs in here. */
+/** Validates cloud-computed results and holds trajectory state. No localization algorithm. */
 export class LocalizationService {
   constructor({ min = -2, max = 2 } = {}) {
     this.min = min;
@@ -6,16 +6,15 @@ export class LocalizationService {
     this.points = [];
   }
 
-  processPayload(payload) {
-    let data;
-    try { data = JSON.parse(payload); } catch { return null; }
-    const candidate = data && (data.position || data.location || data);
-    if (!candidate || typeof candidate !== 'object') return null;
-    const x = Number(candidate?.x), y = Number(candidate?.y);
+  processResult(result) {
+    if (!result || typeof result !== 'object') return null;
+    const { x, y } = result;
+    if (typeof x !== 'number' || typeof y !== 'number') return null;
     if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
     const position = { x: this.#clamp(x), y: this.#clamp(y) };
     this.points.push(position);
-    return { position, points: this.getTrajectory(), displayPayload: JSON.stringify(data, null, 2) };
+    if (this.points.length > 1200) this.points.shift();
+    return { position, points: this.getTrajectory(), displayPayload: JSON.stringify(result, null, 2) };
   }
 
   getTrajectory() { return this.points.map(({ x, y }) => ({ x, y })); }

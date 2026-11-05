@@ -3,6 +3,7 @@ import { DashboardViewDriver } from './src/drivers/DashboardViewDriver.js';
 import { LocalConfigStorageDriver } from './src/drivers/LocalConfigStorageDriver.js';
 import { MqttClientDriver } from './src/drivers/MqttClientDriver.js';
 import { LocalizationService } from './src/services/LocalizationService.js';
+import { SimulationService } from './src/services/SimulationService.js';
 import { MessageLogService } from './src/services/MessageLogService.js';
 import { MqttConnectionService } from './src/services/MqttConnectionService.js';
 
@@ -19,5 +20,6 @@ new AppController({
   view: dashboardViewDriver,
   connectionService: mqttConnectionService,
   localizationService,
-  messageLogService
+  messageLogService,
+  simulationService: new SimulationService()
 });

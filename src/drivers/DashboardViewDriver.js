@@ -9,7 +9,7 @@ export class DashboardViewDriver {
       strip: this.$('.status-strip'), marker: this.$('#positionMarker'), coords: this.$('#markerCoords'),
       x: this.$('#xValue'), y: this.$('#yValue'), path: this.$('#pathLine'), logRows: this.$('#logRows'),
       logCount: this.$('#logCount'), logFoot: this.$('#logFoot'), latest: this.$('#latestData'),
-      empty: this.$('#emptyUpdate'), updateCount: this.$('#updateCount'), toast: this.$('#toast')
+      empty: this.$('#emptyUpdate'), updateCount: this.$('#updateCount'), toast: this.$('#toast'), positionStatus: this.$('#positionStatus')
     };
     this.toastTimer = null;
   }
@@ -19,6 +19,7 @@ export class DashboardViewDriver {
     this.$('#openSettings').addEventListener('click', () => actions.onOpenSettings());
     this.$('#settingsButton').addEventListener('click', () => actions.onOpenSettings());
     this.$('#closeSettings').addEventListener('click', () => actions.onCloseSettings());
+    this.$('#usePublicBroker').addEventListener('click', () => actions.onUsePublicBroker());
     this.$('#cancelSettings').addEventListener('click', () => actions.onCloseSettings());
     e.modal.addEventListener('click', (event) => { if (event.target === e.modal) actions.onCloseSettings(); });
     e.form.addEventListener('submit', (event) => {
@@ -34,6 +35,7 @@ export class DashboardViewDriver {
     this.$('#clearLogs').addEventListener('click', () => actions.onClearLogs());
     this.$('#downloadLogs').addEventListener('click', () => actions.onDownloadLogs());
     this.$('#downloadAll').addEventListener('click', () => actions.onDownloadLogs());
+    this.$('#runSimulation').addEventListener('click', () => actions.onToggleSimulation());
     this.$('#resetMap').addEventListener('click', () => actions.onResetMap());
   }
 
@@ -70,10 +72,16 @@ export class DashboardViewDriver {
     this.elements.last.textContent = new Date(timestamp).toLocaleTimeString('id-ID', { hour12: false });
   }
 
-  renderPosition(position, points, latestPayload, timestamp) {
+  renderPosition(position, points, latestPayload, timestamp, source = 'cloud') {
     const e = this.elements;
     const px = ((position.x + 2) / 4) * 100;
     const py = ((2 - position.y) / 4) * 100;
+    e.marker.classList.remove('hidden');
+    const simulated = source === 'simulation';
+    e.positionStatus.textContent = simulated ? 'SIMULATION' : 'CLOUD RESULT';
+    this.$('#markerSource').textContent = simulated ? 'SIMULATED NODE' : 'CLOUD POSITION';
+    this.$('#resultSource').textContent = simulated ? 'Demo preview' : 'Cloud result';
+    this.$('#processingLocation').textContent = simulated ? 'Local preview' : 'In cloud';
     e.marker.style.left = `${px}%`;
     e.marker.style.top = `${py}%`;
     e.coords.textContent = `${position.x.toFixed(2)}, ${position.y.toFixed(2)}`;
@@ -84,7 +92,7 @@ export class DashboardViewDriver {
     e.empty.classList.add('hidden');
     e.latest.classList.remove('hidden');
     e.latest.innerHTML = '<div class="received-line"></div><pre class="json-preview"></pre>';
-    e.latest.querySelector('.received-line').textContent = `${new Date(timestamp).toLocaleTimeString('id-ID', { hour12: false })} · position accepted`;
+    e.latest.querySelector('.received-line').textContent = `${new Date(timestamp).toLocaleTimeString('id-ID', { hour12: false })} · ${simulated ? 'simulated position' : 'position accepted'}`;
     e.latest.querySelector('pre').textContent = latestPayload;
   }
 
@@ -93,7 +101,7 @@ export class DashboardViewDriver {
     e.logCount.textContent = totalCount;
     e.logFoot.textContent = `Showing ${logs.length} of ${totalCount} message${totalCount === 1 ? '' : 's'}`;
     if (!logs.length) {
-      e.logRows.innerHTML = `<div class="log-empty">${totalCount ? 'No messages match this filter.' : 'No messages received yet. Connect to a broker or send a test update.'}</div>`;
+      e.logRows.innerHTML = `<div class="log-empty">${totalCount ? 'No messages match this filter.' : 'No messages received yet. Connect to a broker to receive device telemetry.'}</div>`;
       return;
     }
     e.logRows.replaceChildren(...logs.map((log) => {
@@ -109,10 +117,22 @@ export class DashboardViewDriver {
 
   resetMap() {
     const e = this.elements;
+    e.marker.classList.add('hidden');
+    e.positionStatus.textContent = 'AWAITING CLOUD';
+    this.$('#resultSource').textContent = 'Not connected';
+    this.$('#processingLocation').textContent = 'In cloud';
     e.marker.style.left = '50%'; e.marker.style.top = '50%';
-    e.coords.textContent = '0.00, 0.00'; e.x.innerHTML = '0.00 <small>m</small>'; e.y.innerHTML = '0.00 <small>m</small>';
+    e.coords.textContent = '—, —'; e.x.innerHTML = '— <small>m</small>'; e.y.innerHTML = '— <small>m</small>';
     e.path.setAttribute('points', ''); e.latest.classList.add('hidden'); e.empty.classList.remove('hidden');
     e.updateCount.textContent = '0 updates';
+  }
+
+  showSimulationState(running, paused = false) {
+    const button = this.$('#runSimulation');
+    button.textContent = running ? 'Ⅱ Pause' : paused ? '▶ Resume' : '▶ Run demo';
+    button.setAttribute('aria-pressed', String(running));
+    this.$('.map-panel').classList.toggle('simulating', running);
+    if (paused) this.elements.positionStatus.textContent = 'DEMO PAUSED';
   }
 
   showToast(message) {
