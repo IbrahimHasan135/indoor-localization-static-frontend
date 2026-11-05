@@ -53,16 +53,17 @@ export class DashboardViewDriver {
   showConnection(status, detail = '') {
     const e = this.elements;
     const connected = status === 'connected';
+    const pending = status === 'connecting' || status === 'reconnecting';
     e.strip.classList.toggle('connected', connected);
     e.status.textContent = status === 'connected' ? 'Connected to broker'
       : status === 'connecting' ? 'Connecting…'
         : status === 'reconnecting' ? 'Reconnecting…'
-          : 'Not connected';
+          : status === 'failed' ? 'Connection failed' : 'Not connected';
     e.detail.textContent = detail || (connected
       ? 'Receiving live messages from your MQTT topic'
       : 'Configure your MQTT broker to start receiving data');
-    this.$('#connectButton').innerHTML = connected
-      ? '<span>↗</span> Disconnect'
+    this.$('#connectButton').innerHTML = pending ? '<span>×</span> Cancel connection'
+      : connected ? '<span>↗</span> Disconnect'
       : '<span>↗</span> Connect broker';
   }
 

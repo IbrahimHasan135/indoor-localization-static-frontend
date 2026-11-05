@@ -41,3 +41,6 @@ body{background:radial-gradient(ellipse at 85% 0%,#e8edfca3,transparent 42%),var
 
 .modal-actions{flex-wrap:wrap}
 #usePublicBroker{margin-right:auto}
+
+.status-main{min-width:0;flex:1}.status-main>div{min-width:0}.status-main small{line-height:1.5;overflow-wrap:anywhere}.status-light{flex-shrink:0}
+@media(max-width:850px){.status-main{flex-basis:100%}}

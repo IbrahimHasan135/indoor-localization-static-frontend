@@ -38,6 +38,12 @@ Saved custom settings take precedence. **Use HiveMQ public** restores the public
 
 Payloads are logged as received; no device JSON schema is imposed. The URL, topic, and username are saved in local storage. Passwords are used for the active connection only.
 
+## Private HiveMQ Cloud connections
+
+Enter the cluster WebSocket URL `wss://your-cluster.s1.eu.hivemq.cloud:8884/mqtt`, the device topic, and active MQTT credentials from HiveMQ Access Management. You can also paste a HiveMQ Cloud `mqtts://…:8883` URI: the dashboard converts it to the WebSocket listener. The ESP still uses MQTT TLS on port 8883. The browser creates its own client ID.
+
+Passwords are never saved; re-enter the password after refreshing or reopening settings. A missing password is caught before connecting. Authentication or subscription rejection stops the connection and leaves an explanation in the status strip. Transport failures retry up to three total attempts, then stop. **Cancel connection** stops an in-progress attempt or reconnection. The browser cannot determine every TLS/network failure; check the cluster endpoint, certificate, network, and cluster availability when a WebSocket connection closes.
+
 ## Cloud localization integration
 
 The map starts empty, with coordinate values shown as `—`. A future cloud-result adapter should call `AppController.onLocalizationResult({ x, y }, receivedAt)` with finite numeric coordinates in meters. This is an internal integration hook, not an HTTP endpoint or an active subscription. Wire the adapter through `app.js` once the cloud transport and result schema are defined. Do not route raw device messages into it.

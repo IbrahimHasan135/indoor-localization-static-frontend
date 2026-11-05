@@ -37,15 +37,16 @@ export class AppController {
   connect(config) {
     try {
       this.connectionService.connect(config);
+      this.view.showSavedTopic(this.connectionService.getSavedConfig().topic);
       this.view.hideSettings();
     } catch (error) {
-      this.view.showConnection('disconnected');
+      this.view.showConnection('failed', error.message);
       this.view.showToast(error.message);
     }
   }
 
   toggleConnection() {
-    if (this.connectionService.isConnected) {
+    if (this.connectionService.isActive || this.connectionService.isConnected) {
       this.connectionService.disconnect();
       this.view.showConnection('disconnected');
       this.view.showToast('Disconnected from broker.');
